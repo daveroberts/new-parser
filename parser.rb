@@ -100,7 +100,7 @@ module SimpleLanguage
 
   def self.make_return(tokens)
     rest = tokens.dup
-    return nil, tokens if !rest[0] || rest[0][:type] != :identifier
+    return nil, tokens if !rest[0] || rest[0][:type] != :identifier || rest[0][:value] != 'return'
     expr, rest = make_expression(rest)
     raise Exception, "return must return something" if !expr
     return {type: :return, payload: expr}, rest
@@ -300,15 +300,15 @@ module SimpleLanguage
     rest = tokens.dup
     return nil, tokens if !rest[0] || rest[0][:type] != :left_bracket
     rest.shift #left bracket
-    members = []
+    items = []
     while rest[0] && rest[0][:type] != :right_bracket
       item, rest = make_expression(rest)
-      raise Exception, "Invalid array item" if !rhs
-      members.push(item)
+      raise Exception, "Invalid array item" if !item
+      items.push(item)
       rest.shift if rest[0] && rest[0][:type] == :comma
     end
     rest.shift # right bracket
-    return { type: :array_literal, value: members }, rest
+    return { type: :array, items: items }, rest
   end
 
   def self.make_reference(tokens)

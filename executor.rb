@@ -56,10 +56,40 @@ module SimpleLanguage
     def exec_cmd(command, variables)
       if command[:type] == :assign
         value = exec_cmd(command[:from], variables)
-        binding.pry
-        ref = exec_cmd(command[:to], variables)
-        binding.pry
-        variables[ref] = value
+        to = nil
+        if command[:to][:type] == :reference
+          if command[:to][:chains].length == 0
+            variables[command[:to][:value]] = value
+          else
+            ref = variables[command[:to][:value]]
+            chains = command[:to][:chains].dup
+            while chains.length > 1
+              chain = chains.first
+              if chain[:type] == :index_of
+                index = exec_cmd(chain[:index], variables)
+                ref = ref[index]
+                chains.shift
+              else
+                binding.pry # chain on non-index_of
+              end
+            end
+            if chains.length > 0
+              chain = chains.first
+              if chain[:type] == :index_of
+                index = exec_cmd(chain[:index], variables)
+                ref[index] = value
+              elsif chain[:type] == :member
+                binding.pry #todo
+              else
+                binding.pry #what kind of chain is this?
+              end
+            else
+              ref = value
+            end
+          end
+        else
+          binding.pry # assign to what?
+        end
       elsif command[:type] == :add_apply
         left = exec_cmd(command[:left], variables)
         right = exec_cmd(command[:right], variables)
@@ -102,8 +132,29 @@ module SimpleLanguage
       elsif command[:type] == :int
         return command[:value].to_i
       elsif command[:type] == :reference #:get_value
-        raise NullPointer, "#{command[:value]} does not exist" if !variables.has_key? command[:value]
-        return variables[command[:value]]
+        name = command[:value]
+        ref = nil
+        chains = command[:chains].dup
+        # check if system command
+        if is_system_command? name
+          raise InvalidParameter, "You must pass arguments to a system command" if chains.length == 0 || chains.first[:type] != :function_params
+          params = chains.first[:params]
+          params = params.map{|p|exec_cmd(p, variables)}
+          ref = run_system_command(name, params)
+          chains.shift
+        elsif is_external_command? name
+          raise InvalidParameter, "You must pass arguments to an external command" if chains.length == 0 || chains.first[:type] != :function_params
+          params = chains.first[:params]
+          params = params.map{|p|exec_cmd(p, variables)}
+          bindingpry
+          ref = run_external_command(name, command[:params], variables)
+          chains.shift
+        else
+          raise NullPointer, "#{command[:value]} does not exist" if !variables.has_key? command[:value]
+          ref = variables[command[:value]]
+        end
+        binding.pry
+        return ref
       elsif command[:type] == :function
         return {
           type: :function,
@@ -166,7 +217,7 @@ module SimpleLanguage
       elsif command[:type] == :false
         return false
       elsif command[:type] == :array
-        arr = command[:items].map{|i|run_block(i,variables)}
+        arr = command[:items].map{|i|exec_cmd(i,variables)}
         return arr
       elsif command[:type] == :index_of
         if command.has_key? :symbol
@@ -220,12 +271,12 @@ module SimpleLanguage
       return system_cmds.include? fun
     end
 
-    def run_system_command(fun, args, variables)
+    def run_system_command(fun, args)
       case fun
       when "print"
-        puts(run_block(args, variables))
+        puts(*args)
       when "join"
-        return run_block(args, variables).join
+        return args[0].join(args[1])
       when "len"
         return exec_cmd(args[0], variables).length
       when "hash"

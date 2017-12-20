@@ -29,5 +29,7 @@ func(hsh[arr[arr[7]+3*hsh[func(3)]]])
   boo
 }*/
 
-sweet = true
-sweet ? "David" : "Jennifer"
+//print("Hello")[0].child("World")[2] = 4
+
+arr = [1,2,3]
+arr.first
