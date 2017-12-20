@@ -153,7 +153,16 @@ module SimpleLanguage
           raise NullPointer, "#{command[:value]} does not exist" if !variables.has_key? command[:value]
           ref = variables[command[:value]]
         end
-        binding.pry
+        while chains.length > 0 do
+          chain = chains.first
+          if chain[:type] == :index_of
+            index = exec_cmd(chain[:index], variables)
+            ref = ref[index]
+          else
+            binding.pry
+          end
+          chains.shift
+        end
         return ref
       elsif command[:type] == :function
         return {
@@ -256,8 +265,8 @@ module SimpleLanguage
         return command[:value]
       elsif command[:type] == :hashmap
         obj = {}
-        command[:objects].each do |o|
-          obj[o[:symbol]] = run_block(o[:block], variables)
+        command[:objects].each do |key, value|
+          obj[key] = exec_cmd(value, variables)
         end
         return obj
       else

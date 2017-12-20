@@ -36,8 +36,6 @@ module SimpleLanguage
     return break_block, rest if break_block
     expr, rest = make_expression(tokens.dup)
     return expr, rest if expr
-    #ref, rest = make_reference(tokens.dup)
-    #return ref, rest if ref
     return nil, tokens
   end
 
@@ -253,6 +251,8 @@ module SimpleLanguage
     return hash, rest if hash
     arr, rest = make_array_literal(rest)
     return arr, rest if arr
+    sym, rest = make_symbol(rest)
+    return sym, rest if sym
     ref, rest = make_reference(rest)
     return ref, rest if ref
     return nil, tokens
@@ -276,12 +276,20 @@ module SimpleLanguage
     rest.shift
     return {type: :string, value: str}, rest
   end
+
+  def self.make_symbol(tokens)
+    rest = tokens.dup
+    return nil, tokens if !rest[0] || rest[0][:type] != :symbol
+    sym = rest[0][:value].to_sym
+    rest.shift
+    return {type: :symbol, value: sym}, rest
+  end
   
   def self.make_hash_literal(tokens)
     rest = tokens.dup
     return nil, tokens if !rest[0] || rest[0][:type] != :left_curly
     rest.shift #left curly
-    members = {}
+    objects = {}
     while rest[0] && rest[0][:type] != :right_curly
       raise Exception, "Invalid hash literal" if rest[0][:type] != :symbol
       symbol = rest[0][:value]
@@ -289,11 +297,11 @@ module SimpleLanguage
       rest.shift
       rhs, rest = make_expression(rest)
       raise Exception, "Invalid hash map value" if !rhs
-      members[symbol] = rhs
+      objects[symbol] = rhs
       rest.shift if rest[0] && rest[0][:type] == :comma
     end
     rest.shift # right curly
-    return { type: :hash_literal, value: members }, rest
+    return { type: :hashmap, objects: objects }, rest
   end
 
   def self.make_array_literal(tokens)

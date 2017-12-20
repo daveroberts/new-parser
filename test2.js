@@ -31,5 +31,5 @@ func(hsh[arr[arr[7]+3*hsh[func(3)]]])
 
 //print("Hello")[0].child("World")[2] = 4
 
-arr = [1,2,3]
-arr.first
+arr = [[1,2],{hello: "world"}]
+arr[1][:hello]
