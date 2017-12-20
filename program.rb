@@ -1,5 +1,8 @@
 require './lexer.rb'
+require './parser.rb'
+require "awesome_print"
 
-program = File.read('test1.js')
+program = File.read('test2.js')
 tokens = SimpleLanguage::lex(program)
-puts tokens
+ast = SimpleLanguage::parse(tokens)
+ap ast

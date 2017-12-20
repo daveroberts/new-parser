@@ -44,26 +44,26 @@ module SimpleLanguage
           if token[:name] == :double_quoted_string
             val = match[1].gsub('\\"','"')
             tokens.push({
-              token: :string,
+              type: :string,
               value: val
             })
           elsif token[:name] == :single_quoted_string
             val = match[1].gsub("\\'","'")
             tokens.push({
-              token: :string,
+              type: :string,
               value: val
             })
           elsif token[:name] == :backtick_string
             val = match[1].gsub("\\`","`")
             tokens.push({
-              token: :template_string,
+              type: :template_string,
               value: val
             })
           elsif token[:name] == :whitespace
           elsif token[:name] == :comment
           else
             tokens.push({
-              token: token[:name],
+              type: token[:name],
               value: match[1] ? match[1] : match[0]
             })
           end

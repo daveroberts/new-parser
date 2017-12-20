@@ -1,14 +1,10 @@
-# program := { <statement> [ <newline> ] }
+# program := { <statement> }
 def make_program(str)
   statement = make_statement(str)
   
 end
-# newline := \n
 # statement := <assignment> | <func_call> | <index_of>
 # assignment := <identifier> { <ws> } <equals> { <ws> } <string>
-# identifier := <character> { <character> | <number> | <underscore> }
-# character := /[A-Za-z]/
-# number := /[0-9]/
 # underscore := _
 # ws := <space> | <tab>
 # equals := =
