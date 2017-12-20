@@ -1,4 +1,18 @@
-hash = {hello: arr[2+2]}
+//hash = {hello: arr[2+2]}
+/*hash = {
+  name: "bob seger",
+  title: page.css("Hello")
+}*/
+/*for person in people {
+  indicators = 5
+  //"A" ? "B" : "C"
+}*/
+2*3+4*5
+/*if 1+1 > 2+1 {
+  hello
+  world
+}*/
+//arr = []
 //arr[2](hello)
 //a = 1
 //b = (1 + a) * 2
@@ -10,5 +24,3 @@ hash = {hello: arr[2+2]}
 //fun(arr[7])+arr[fun(2)]*fun(3+2*arr[1+x])
 
 //func(hsh[arr[arr[7]+3*hsh[func(3)]]])
-
-//fun(arr[7])

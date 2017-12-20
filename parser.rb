@@ -24,11 +24,58 @@ module SimpleLanguage
     tokens_orig = tokens.dup
     assignment, rest = make_assignment(tokens.dup)
     return assignment, rest if assignment
+    for_block, rest = make_for(tokens)
+    return for_block, rest if for_block
+    if_block, rest = make_if(tokens)
+    return if_block, rest if if_block
     expr, rest = make_expression(tokens.dup)
     return expr, rest if expr
     ref, rest = make_reference(tokens.dup)
     return ref, rest if ref
     return nil, tokens
+  end
+
+  def self.make_for(tokens)
+    rest = tokens.dup
+    return nil, tokens if !rest[0] || rest[0][:type] != :identifier || (rest[0][:value] != 'for' && rest[0][:value] != 'foreach')
+    rest.shift # for
+    raise Exception, "for requires identifier" if !rest[0] || rest[0][:type] != :identifier
+    singular = rest[0][:value]
+    rest.shift # singular
+    raise Exception, "for requires in" if !rest[0] || rest[0][:type] != :identifier || rest[0][:value] != 'in'
+    rest.shift # in
+    plural, rest = make_expression(rest)
+    raise Exception, "for requires a group" if !plural
+    raise Exception, "for requires block" if !rest[0] || rest[0][:type] != :left_curly
+    rest.shift # left curly
+    block = []
+    while rest[0] && rest[0][:type] != :right_curly
+      statement, rest = make_statement(rest)
+      raise Exception, "Invalid statement in for block" if !statement
+      block.push(statement)
+    end
+    raise Exception, "For block must end with `}`" if !rest[0] || rest[0][:type] != :right_curly
+    rest.shift # Right curly
+    return {type: :for, singular: singular, plural: plural, block: block}, rest
+  end
+
+  def self.make_if(tokens)
+    rest = tokens.dup
+    return nil, tokens if !rest[0] || rest[0][:type] != :identifier || rest[0][:value] != 'if'
+    rest.shift # if
+    condition, rest = make_expression(rest)
+    raise Exception, "if requires condition" if !condition
+    raise Exception, "if requires block" if !rest[0] || rest[0][:type] != :left_curly
+    rest.shift # left curly
+    block = []
+    while rest[0] && rest[0][:type] != :right_curly
+      statement, rest = make_statement(rest)
+      raise Exception, "Invalid statement in if block" if !statement
+      block.push(statement)
+    end
+    raise Exception, "Block must end with `}`" if !rest[0] || rest[0][:type] != :right_curly
+    rest.shift # Right curly
+    return {type: :if, condition: condition, block: block}, rest
   end
 
   def self.make_assignment(tokens)
@@ -42,7 +89,23 @@ module SimpleLanguage
   end
 
   def self.make_expression(tokens)
-    term, rest = make_term(tokens.dup)
+    rest = tokens.dup
+    comp, rest = make_comparison(rest)
+    return nil, tokens if !comp
+    if rest[0] && rest[0][:type] == :greater_than
+      rest.shift # sym
+      expr, rest = make_expression(rest)
+      binding.pry
+      raise Exception, "Invalid expression after >" if !expr
+      return {type: :greater_than, left: comp, right: expr},rest if expr
+    else
+      return comp, rest
+    end
+  end
+
+  def self.make_comparison(tokens)
+    rest = tokens.dup
+    term, rest = make_term(rest)
     return nil, tokens if !term
     if rest[0] && rest[0][:type] == :plus
       rest.shift
@@ -60,18 +123,19 @@ module SimpleLanguage
   end
 
   def self.make_term(tokens)
-    factor, rest = make_factor(tokens.dup)
+    rest = tokens.dup
+    factor, rest = make_factor(rest)
     return nil, tokens if !factor
     if rest[0] && rest[0][:type] == :multiply
-      rest.shift
-      expr, rest = make_expression(rest.dup)
-      return {action: :multiply, left: factor, right: expr}, rest if expr
-      raise Exception, "Trying to multiply a non-expression"
+      rest.shift #sym
+      expr, rest = make_expression(rest)
+      raise Exception, "* without expression on rhs" if !expr
+      return {type: :multiply, left: factor, right: expr}, rest
     elsif rest[0] && rest[0][:type] == :divide
-      rest.shift
-      expr, rest = make_expression(rest.dup)
-      return {action: :divide, left: factor, right: expr}, rest if expr
-      raise Exception, "Trying to divide a non-expression"
+      rest.shift #sym
+      expr, rest = make_expression(rest)
+      raise Exception, "/ without expression on rhs" if !expr
+      return {type: :divide, left: factor, right: expr}, rest
     else
       return factor, rest
     end
@@ -92,6 +156,8 @@ module SimpleLanguage
     return str, rest if str
     hash, rest = make_hash_literal(tokens)
     return hash, rest if hash
+    arr, rest = make_array_literal(tokens)
+    return arr, rest if arr
     ref, rest = make_reference(tokens.dup)
     return ref, rest if ref
     return nil, tokens
@@ -144,6 +210,21 @@ module SimpleLanguage
     end
     rest.shift # right curly
     return { type: :hash_literal, value: members }, rest
+  end
+
+  def self.make_array_literal(tokens)
+    rest = tokens.dup
+    return nil, tokens if !rest[0] || rest[0][:type] != :left_bracket
+    rest.shift #left bracket
+    members = []
+    while rest[0] && rest[0][:type] != :right_bracket
+      item, rest = make_expression(rest)
+      raise Exception, "Invalid array item" if !rhs
+      members.push(item)
+      rest.shift if rest[0] && rest[0][:type] == :comma
+    end
+    rest.shift # right bracket
+    return { type: :array_literal, value: members }, rest
   end
 
   def self.make_reference(tokens)
