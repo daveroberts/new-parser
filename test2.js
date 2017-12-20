@@ -29,4 +29,5 @@ func(hsh[arr[arr[7]+3*hsh[func(3)]]])
   boo
 }*/
 
-A ? B : C
+sweet = true
+sweet ? "David" : "Jennifer"

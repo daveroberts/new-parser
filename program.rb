@@ -1,8 +1,9 @@
 require './lexer.rb'
 require './parser.rb'
+require './executor.rb'
 require "awesome_print"
 
-program = File.read('test2.js')
-tokens = SimpleLanguage::lex(program)
-ast = SimpleLanguage::parse(tokens)
-ap ast
+script = File.read('test2.js')
+executor = SimpleLanguage::Executor.new
+output = executor.run(script)
+puts output

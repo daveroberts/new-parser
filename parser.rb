@@ -32,6 +32,8 @@ module SimpleLanguage
     return ternary_block, rest if ternary_block
     return_block, rest = make_return(tokens)
     return return_block, rest if return_block
+    break_block, rest = make_break(tokens)
+    return break_block, rest if break_block
     expr, rest = make_expression(tokens.dup)
     return expr, rest if expr
     #ref, rest = make_reference(tokens.dup)
@@ -79,7 +81,7 @@ module SimpleLanguage
     end
     raise Exception, "Block must end with `}`" if !rest[0] || rest[0][:type] != :right_curly
     rest.shift # Right curly
-    return {type: :if, condition: condition, true_block: true_block}, rest
+    return {type: :if, true_conditions: [{ condition: condition, block: true_block}], false_block: []}, rest
   end
 
   def self.make_ternary(tokens)
@@ -93,7 +95,7 @@ module SimpleLanguage
     raise Exception, ": expected after ?" if !rest[0] || rest[0][:type] != :colon
     rest.shift # :
     if_false, rest = make_expression(rest)
-    return {type: :if, condition: condition, true_block: [if_true], false_block: [if_false]}, rest
+    return {type: :if, true_conditions: [{ condition: condition, block: [if_true]}], false_block: [if_false]}, rest
   end
 
   def self.make_return(tokens)
@@ -102,6 +104,12 @@ module SimpleLanguage
     expr, rest = make_expression(rest)
     raise Exception, "return must return something" if !expr
     return {type: :return, payload: expr}, rest
+  end
+
+  def self.make_break(tokens)
+    rest = tokens.dup
+    return nil, tokens if !rest[0] || rest[0][:type] != :break
+    return {type: :break}, rest
   end
 
   def self.make_assignment(tokens)
@@ -255,7 +263,7 @@ module SimpleLanguage
     if rest[0] && rest[0][:type] == :number
       number = rest[0][:value]
       rest.shift # number
-      return {type: :number, value: number}, rest
+      return {type: :int, value: number}, rest
     else
       return nil, tokens
     end
