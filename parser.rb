@@ -85,7 +85,7 @@ module SimpleLanguage
     rest.shift
     from, rest = make_expression(rest.dup)
     return nil, tokens if !from
-    return {action: :assign, from: from, to: to}, rest
+    return {action: :assign, to: to, from: from}, rest
   end
 
   def self.make_expression(tokens)
@@ -108,12 +108,12 @@ module SimpleLanguage
     return nil, tokens if !term
     if rest[0] && rest[0][:type] == :plus
       rest.shift
-      expr, rest = make_expression(rest.dup)
+      expr, rest = make_comparison(rest.dup)
       return {action: :add, left: term, right: expr},rest if expr
       raise Exception, "Trying to add a non-expression"
     elsif rest[0] && rest[0][:type] == :minus
       rest.shift
-      expr, rest = make_expression(rest.dup)
+      expr, rest = make_comparison(rest.dup)
       return {action: :subtract, left: term, right: expr},rest if expr
       raise Exception, "Trying to subtract a non-expression"
     else
@@ -127,12 +127,12 @@ module SimpleLanguage
     return nil, tokens if !factor
     if rest[0] && rest[0][:type] == :multiply
       rest.shift #sym
-      expr, rest = make_expression(rest)
+      expr, rest = make_term(rest)
       raise Exception, "* without expression on rhs" if !expr
       return {type: :multiply, left: factor, right: expr}, rest
     elsif rest[0] && rest[0][:type] == :divide
       rest.shift #sym
-      expr, rest = make_expression(rest)
+      expr, rest = make_term(rest)
       raise Exception, "/ without expression on rhs" if !expr
       return {type: :divide, left: factor, right: expr}, rest
     else
@@ -141,44 +141,34 @@ module SimpleLanguage
   end
 
   def self.make_factor(tokens)
-    if tokens[0] && tokens[0][:type] == :left_paren
-      tokens.shift
-      expr, rest = make_expression(tokens.dup)
+    rest = tokens.dup
+    if rest[0] && rest[0][:type] == :left_paren
+      rest.shift # left_paren
+      expr, rest = make_expression(rest)
       raise Exception, "Invalid expression after (" if !expr
       raise Exception, "`(` without `)`" if rest[0][:type] != :right_paren
-      rest.shift
+      rest.shift # right paren
       return { action: :grouping, expression: expr }, rest
     end
-    num, rest = make_number(tokens.dup)
+    num, rest = make_number(rest)
     return num, rest if num
-    str, rest = make_string(tokens)
+    str, rest = make_string(rest)
     return str, rest if str
-    hash, rest = make_hash_literal(tokens)
+    hash, rest = make_hash_literal(rest)
     return hash, rest if hash
-    arr, rest = make_array_literal(tokens)
+    arr, rest = make_array_literal(rest)
     return arr, rest if arr
-    ref, rest = make_reference(tokens.dup)
+    ref, rest = make_reference(rest)
     return ref, rest if ref
     return nil, tokens
-    #if @tokens[@position][:type] == :left_paren
-    #  @position = @position + 1
-    #  expr = make_expression
-    #  if @tokens[@position][:type] == :right_paren
-    #    return "("+expr+")"
-    #    @position = @position + 1
-    #  else
-    #    raise Exception, "Unmatched parenthesis"
-    #  end
-    #else
-    #  numb = make_number
-    #end
   end
 
   def self.make_number(tokens)
-    if tokens[0] && tokens[0][:type] == :number
-      number = tokens[0][:value]
-      tokens.shift
-      return {action: :number, value: number}, tokens
+    rest = tokens.dup
+    if rest[0] && rest[0][:type] == :number
+      number = rest[0][:value]
+      rest.shift # number
+      return {action: :number, value: number}, rest
     else
       return nil, tokens
     end
