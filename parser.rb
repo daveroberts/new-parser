@@ -30,6 +30,8 @@ module SimpleLanguage
     return if_block, rest if if_block
     ternary_block, rest = make_ternary(tokens)
     return ternary_block, rest if ternary_block
+    return_block, rest = make_return(tokens)
+    return return_block, rest if return_block
     expr, rest = make_expression(tokens.dup)
     return expr, rest if expr
     #ref, rest = make_reference(tokens.dup)
@@ -92,6 +94,14 @@ module SimpleLanguage
     rest.shift # :
     if_false, rest = make_expression(rest)
     return {type: :if, condition: condition, true_block: [if_true], false_block: [if_false]}, rest
+  end
+
+  def self.make_return(tokens)
+    rest = tokens.dup
+    return nil, tokens if !rest[0] || rest[0][:type] != :identifier
+    expr, rest = make_expression(rest)
+    raise Exception, "return must return something" if !expr
+    return {type: :return, payload: expr}, rest
   end
 
   def self.make_assignment(tokens)
@@ -214,6 +224,18 @@ module SimpleLanguage
       raise Exception, "`(` without `)`" if rest[0][:type] != :right_paren
       rest.shift # right paren
       return {type: :grouping, expression: expr}, rest
+    end
+    if rest[0] && rest[0][:type] == :identifier && rest[0][:value] == 'true'
+      rest.shift
+      return {type: :true}, rest
+    end
+    if rest[0] && rest[0][:type] == :identifier && rest[0][:value] == 'false'
+      rest.shift
+      return {type: :false}, rest
+    end
+    if rest[0] && rest[0][:type] == :identifier && rest[0][:value] == 'null'
+      rest.shift
+      return {type: :null}, rest
     end
     num, rest = make_number(rest)
     return num, rest if num
