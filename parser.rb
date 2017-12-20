@@ -22,16 +22,18 @@ module SimpleLanguage
 
   def self.make_statement(tokens)
     tokens_orig = tokens.dup
-    assignment, rest = make_assignment(tokens.dup)
+    assignment, rest = make_assignment(tokens)
     return assignment, rest if assignment
     for_block, rest = make_for(tokens)
     return for_block, rest if for_block
     if_block, rest = make_if(tokens)
     return if_block, rest if if_block
+    ternary_block, rest = make_ternary(tokens)
+    return ternary_block, rest if ternary_block
     expr, rest = make_expression(tokens.dup)
     return expr, rest if expr
-    ref, rest = make_reference(tokens.dup)
-    return ref, rest if ref
+    #ref, rest = make_reference(tokens.dup)
+    #return ref, rest if ref
     return nil, tokens
   end
 
@@ -67,15 +69,29 @@ module SimpleLanguage
     raise Exception, "if requires condition" if !condition
     raise Exception, "if requires block" if !rest[0] || rest[0][:type] != :left_curly
     rest.shift # left curly
-    block = []
+    true_block = []
     while rest[0] && rest[0][:type] != :right_curly
       statement, rest = make_statement(rest)
-      raise Exception, "Invalid statement in if block" if !statement
-      block.push(statement)
+      raise Exception, "Invalid statement in if true block" if !statement
+      true_block.push(statement)
     end
     raise Exception, "Block must end with `}`" if !rest[0] || rest[0][:type] != :right_curly
     rest.shift # Right curly
-    return {type: :if, condition: condition, block: block}, rest
+    return {type: :if, condition: condition, true_block: true_block}, rest
+  end
+
+  def self.make_ternary(tokens)
+    rest = tokens.dup
+    condition, rest = make_expression(rest)
+    return nil, tokens if !condition
+    return nil, tokens if !rest[0] || rest[0][:type] != :question_mark
+    rest.shift # ?
+    if_true, rest = make_expression(rest)
+    raise Exception, "Invalid expression after ?" if !if_true
+    raise Exception, ": expected after ?" if !rest[0] || rest[0][:type] != :colon
+    rest.shift # :
+    if_false, rest = make_expression(rest)
+    return {type: :if, condition: condition, true_block: [if_true], false_block: [if_false]}, rest
   end
 
   def self.make_assignment(tokens)
@@ -85,62 +101,111 @@ module SimpleLanguage
     rest.shift
     from, rest = make_expression(rest.dup)
     return nil, tokens if !from
-    return {action: :assign, to: to, from: from}, rest
+    return {type: :assign, to: to, from: from}, rest
   end
 
   def self.make_expression(tokens)
     rest = tokens.dup
-    comp, rest = make_comparison(rest)
-    return nil, tokens if !comp
-    if rest[0] && rest[0][:type] == :greater_than
+    comp, rest = make_boolean(rest)
+    return comp, rest
+  end
+
+  def self.make_boolean(tokens)
+    rest = tokens.dup
+    lhs, rest = make_comparison(rest)
+    return nil, tokens if !lhs
+    if rest[0] && rest[0][:type] == :double_pipe
       rest.shift # sym
-      expr, rest = make_expression(rest)
-      raise Exception, "Invalid expression after >" if !expr
-      return {type: :greater_than, left: comp, right: expr},rest if expr
+      rhs, rest = make_boolean(rest)
+      raise Exception, "Invalid boolean after ||" if !rhs
+      return {type: :or, left: lhs, right: rhs},rest
+    elsif rest[0] && rest[0][:type] == :double_ampersand
+      rest.shift # sym
+      rhs, rest = make_boolean(rest)
+      raise Exception, "Invalid boolean after &&" if !rhs
+      return {type: :and, left: lhs, right: rhs},rest
     else
-      return comp, rest
+      return lhs, rest
     end
   end
 
   def self.make_comparison(tokens)
     rest = tokens.dup
-    term, rest = make_term(rest)
-    return nil, tokens if !term
-    if rest[0] && rest[0][:type] == :plus
-      rest.shift
-      expr, rest = make_comparison(rest.dup)
-      return {action: :add, left: term, right: expr},rest if expr
-      raise Exception, "Trying to add a non-expression"
-    elsif rest[0] && rest[0][:type] == :minus
-      rest.shift
-      expr, rest = make_comparison(rest.dup)
-      return {action: :subtract, left: term, right: expr},rest if expr
-      raise Exception, "Trying to subtract a non-expression"
-    else
-      return term, rest
+    lhs, rest = make_term(rest)
+    return nil, tokens if !lhs
+    if rest[0] && rest[0][:type] == :greater_than
+      rest.shift # sym
+      rhs, rest = make_comparison(rest)
+      raise Exception, "Invalid comparison after >" if !rhs
+      return {type: :greater_than, left: lhs, right: rhs},rest
+    elsif rest[0] && rest[0][:type] == :greater_than_or_equals
+      rest.shift # sym
+      rhs, rest = make_comparison(rest)
+      raise Exception, "Invalid comparison after >=" if !rhs
+      return {type: :greater_than_or_equals, left: lhs, right: rhs},rest
+    elsif rest[0] && rest[0][:type] == :less_than
+      rest.shift # sym
+      rhs, rest = make_comparison(rest)
+      raise Exception, "Invalid comparison after <" if !rhs
+      return {type: :less_than, left: lhs, right: rhs},rest
+    elsif rest[0] && rest[0][:type] == :less_than_or_equals
+      rest.shift # sym
+      rhs, rest = make_comparison(rest)
+      raise Exception, "Invalid comparison after <=" if !rhs
+      return {type: :less_than_or_equals, left: lhs, right: rhs},rest
+    elsif rest[0] && rest[0][:type] == :double_equals
+      rest.shift # sym
+      rhs, rest = make_comparison(rest)
+      raise Exception, "Invalid comparison after ==" if !rhs
+      return {type: :check_equality, left: lhs, right: rhs},rest
+    elsif rest[0] && rest[0][:type] == :not_equals
+      rest.shift # sym
+      rhs, rest = make_comparison(rest)
+      raise Exception, "Invalid comparison after !=" if !rhs
+      return {type: :check_not_equals, left: lhs, right: rhs},rest
     end
+    return lhs, rest
   end
 
   def self.make_term(tokens)
     rest = tokens.dup
-    factor, rest = make_factor(rest)
-    return nil, tokens if !factor
-    if rest[0] && rest[0][:type] == :multiply
+    lhs, rest = make_factor(rest)
+    return nil, tokens if !lhs
+    if rest[0] && rest[0][:type] == :plus
       rest.shift #sym
-      expr, rest = make_term(rest)
-      raise Exception, "* without expression on rhs" if !expr
-      return {type: :multiply, left: factor, right: expr}, rest
-    elsif rest[0] && rest[0][:type] == :divide
-      rest.shift #sym
-      expr, rest = make_term(rest)
-      raise Exception, "/ without expression on rhs" if !expr
-      return {type: :divide, left: factor, right: expr}, rest
+      rhs, rest = make_term(rest)
+      raise Exception, "Invalid after +" if !rhs
+      return {type: :add, left: lhs, right: rhs},rest
+    elsif rest[0] && rest[0][:type] == :minus
+      rest.shift
+      rhs, rest = make_term(rest.dup)
+      raise Exception, "Invalid after -" if !rhs
+      return {type: :subtract, left: lhs, right: rhs},rest
     else
-      return factor, rest
+      return lhs, rest
     end
   end
 
   def self.make_factor(tokens)
+    rest = tokens.dup
+    lhs, rest = make_terminal(rest)
+    return nil, tokens if !lhs
+    if rest[0] && rest[0][:type] == :multiply
+      rest.shift #sym
+      rhs, rest = make_factor(rest)
+      raise Exception, "Invalid after *" if !rhs
+      return {type: :multiply, left: lhs, right: rhs}, rest
+    elsif rest[0] && rest[0][:type] == :divide
+      rest.shift #sym
+      rhs, rest = make_factor(rest)
+      raise Exception, "Invalid after /" if !rhs
+      return {type: :divide, left: lhs, right: rhs}, rest
+    else
+      return lhs, rest
+    end
+  end
+
+  def self.make_terminal(tokens)
     rest = tokens.dup
     if rest[0] && rest[0][:type] == :left_paren
       rest.shift # left_paren
@@ -148,7 +213,7 @@ module SimpleLanguage
       raise Exception, "Invalid expression after (" if !expr
       raise Exception, "`(` without `)`" if rest[0][:type] != :right_paren
       rest.shift # right paren
-      return { action: :grouping, expression: expr }, rest
+      return {type: :grouping, expression: expr}, rest
     end
     num, rest = make_number(rest)
     return num, rest if num
@@ -168,7 +233,7 @@ module SimpleLanguage
     if rest[0] && rest[0][:type] == :number
       number = rest[0][:value]
       rest.shift # number
-      return {action: :number, value: number}, rest
+      return {type: :number, value: number}, rest
     else
       return nil, tokens
     end
@@ -262,7 +327,7 @@ module SimpleLanguage
       end
       break if !matched_any
     end
-    return {action: :reference, value: ident, chains: chains }, rest
+    return {type: :reference, value: ident, chains: chains }, rest
   end
 
 end

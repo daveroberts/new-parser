@@ -13,6 +13,7 @@ module SimpleLanguage
     { name: :number, regex: /\A[0-9]+/ },
     { name: :colon, regex: /\A:/ },
     { name: :question_mark, regex: /\A\?/ },
+    { name: :double_ampersand, regex: /\A&&/ },
     { name: :double_equals, regex: /\A==/ },
     { name: :not_equals, regex: /\A!=/ },
     { name: :equals, regex: /\A=/ },
