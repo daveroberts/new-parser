@@ -95,7 +95,6 @@ module SimpleLanguage
     if rest[0] && rest[0][:type] == :greater_than
       rest.shift # sym
       expr, rest = make_expression(rest)
-      binding.pry
       raise Exception, "Invalid expression after >" if !expr
       return {type: :greater_than, left: comp, right: expr},rest if expr
     else
