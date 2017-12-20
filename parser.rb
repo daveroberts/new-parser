@@ -1,4 +1,5 @@
 require "awesome_print"
+require "pry"
 
 module SimpleLanguage
   def self.parse(tokens)
@@ -77,7 +78,7 @@ module SimpleLanguage
   end
 
   def self.make_factor(tokens)
-    if tokens[0][:type] == :left_paren
+    if tokens[0] && tokens[0][:type] == :left_paren
       tokens.shift
       expr, rest = make_expression(tokens.dup)
       raise Exception, "Invalid expression after (" if !expr
@@ -87,6 +88,10 @@ module SimpleLanguage
     end
     num, rest = make_number(tokens.dup)
     return num, rest if num
+    str, rest = make_string(tokens)
+    return str, rest if str
+    hash, rest = make_hash_literal(tokens)
+    return hash, rest if hash
     ref, rest = make_reference(tokens.dup)
     return ref, rest if ref
     return nil, tokens
@@ -114,25 +119,59 @@ module SimpleLanguage
     end
   end
 
+  def self.make_string(tokens)
+    rest = tokens.dup
+    return nil, tokens if !rest[0] || rest[0][:type] != :string
+    str = rest[0][:value]
+    rest.shift
+    return {type: :string, value: str}, rest
+  end
+  
+  def self.make_hash_literal(tokens)
+    rest = tokens.dup
+    return nil, tokens if !rest[0] || rest[0][:type] != :left_curly
+    rest.shift #left curly
+    members = {}
+    while rest[0] && rest[0][:type] != :right_curly
+      raise Exception, "Invalid hash literal" if rest[0][:type] != :symbol
+      symbol = rest[0][:value]
+      symbol = symbol.to_sym
+      rest.shift
+      rhs, rest = make_expression(rest)
+      raise Exception, "Invalid hash map value" if !rhs
+      members[symbol] = rhs
+      rest.shift if rest[0] && rest[0][:type] == :comma
+    end
+    rest.shift # right curly
+    return { type: :hash_literal, value: members }, rest
+  end
+
   def self.make_reference(tokens)
-    if tokens[0] && tokens[0][:type] == :identifier
-      ident = tokens[0][:value]
-      tokens.shift
-      if tokens[0] && tokens[0][:type] == :left_bracket
-        tokens.shift
-        ind, rest = make_expression(tokens.dup)
+    if !tokens[0] || tokens[0][:type] != :identifier
+      return nil, tokens
+    end
+    ident = tokens[0][:value]
+    tokens.shift
+    rest = tokens.dup
+    matched_any = false
+    chains = []
+    while true do
+      matched_any = false
+      if rest[0] && rest[0][:type] == :left_bracket
+        matched_any = true
+        rest.shift
+        ind, rest = make_expression(rest.dup)
         raise Exception, "Invalid array index" if !ind
         if !rest[0] || rest[0][:type] != :right_bracket
           raise Exception, "Left bracket without right bracket"
         end
         rest.shift
-        return {action: :reference, array: ident, index: ind}, rest
-      elsif tokens[0] && tokens[0][:type] == :left_paren
-        tokens.shift
-        rest = tokens.dup
+        chains.push({type: :index_of, index: ind})
+      elsif rest[0] && rest[0][:type] == :left_paren
+        rest.shift # left paren
+        matched_any = true
         params = []
         while rest[0] && rest[0][:type] != :right_paren do
-          rest_orig = rest.dup
           expr, rest = make_expression(rest.dup)
           raise Exception, "Invalid parameter" if !expr
           if rest[0] && (rest[0][:type] != :comma && rest[0][:type] != :right_paren)
@@ -142,13 +181,18 @@ module SimpleLanguage
           rest.shift if rest[0] && rest[0][:type] == :comma
         end
         rest.shift if rest[0] && rest[0][:type] == :right_paren
-        return {action: :func_call, function: ident, params: params}, rest
-      else
-        return {action: :reference, value: ident}, tokens
+        chains.push({type: :function_params, params: params})
+      elsif rest[0] && rest[0][:type] == :dot
+        matched_any = true
+        rest.shift
+        raise Exception, "Must have identifier after ." if !rest[0] || rest[0][:type] != :identifier
+        member = rest[0][:value]
+        rest.shift
+        chains.push({type: :member, member: member})
       end
-    else
-      return nil, tokens
+      break if !matched_any
     end
+    return {action: :reference, value: ident, chains: chains }, rest
   end
 
 end

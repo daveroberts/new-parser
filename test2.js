@@ -1,5 +1,7 @@
+hash = {hello: arr[2+2]}
+//arr[2](hello)
 //a = 1
-b = (1 + a) * 2
+//b = (1 + a) * 2
 //c = 2 + 3 * 4
 //arr[2+3*4] = 8
 //func(x)+func(y)*func(z)
