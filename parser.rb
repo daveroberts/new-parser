@@ -82,6 +82,38 @@ module SimpleLanguage
     return {type: :if, true_conditions: [{ condition: condition, block: true_block}], false_block: []}, rest
   end
 
+  def self.make_function_literal(tokens)
+    rest = tokens.dup
+    return nil, tokens if !rest[0] || rest[0][:type] != :left_paren
+    rest.shift # (
+    params = []
+    while rest[0] && rest[0][:type] != :right_paren do
+      raise Exception, "Function expects parameter" if !rest[0] || rest[0][:type] != :identifier
+      param = rest[0][:value]
+      rest.shift #param
+      if !rest[0] || (rest[0][:type] != :comma && rest[0][:type] != :right_paren)
+        raise Exception, "Invalid parameters to function definition"
+      end
+      params.push(param)
+      rest.shift if rest[0] && rest[0][:type] == :comma
+    end
+    raise Exception, "Expected ) after function list" if !rest[0] || rest[0][:type] != :right_paren
+    rest.shift # right paren
+    raise Exception, "Expected -> after function list" if !rest[0] || rest[0][:type] != :arrow
+    rest.shift # ->
+    raise Exception, "Expected block after arrow" if !rest[0] || rest[0][:type] != :left_curly
+    rest.shift # {
+    block = []
+    while rest[0] && rest[0][:type] != :right_curly
+      statement, rest = make_statement(rest)
+      raise Exception, "Invalid statement in function block" if !statement
+      block.push(statement)
+    end
+    raise Exception, "Block must end with `}`" if !rest[0] || rest[0][:type] != :right_curly
+    rest.shift # Right curly
+    return {type: :function, params: params, block: block}, rest
+  end
+
   def self.make_ternary(tokens)
     rest = tokens.dup
     condition, rest = make_expression(rest)
@@ -223,6 +255,8 @@ module SimpleLanguage
 
   def self.make_terminal(tokens)
     rest = tokens.dup
+    fun, rest = make_function_literal(rest)
+    return fun, rest if fun
     if rest[0] && rest[0][:type] == :left_paren
       rest.shift # left_paren
       expr, rest = make_expression(rest)
@@ -249,7 +283,9 @@ module SimpleLanguage
     return str, rest if str
     hash, rest = make_hash_literal(rest)
     return hash, rest if hash
+    binding.pry
     arr, rest = make_array_literal(rest)
+    binding.pry
     return arr, rest if arr
     sym, rest = make_symbol(rest)
     return sym, rest if sym

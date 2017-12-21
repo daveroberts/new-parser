@@ -90,15 +90,15 @@ module SimpleLanguage
         else
           binding.pry # assign to what?
         end
-      elsif command[:type] == :add_apply
+      elsif command[:type] == :add
         left = exec_cmd(command[:left], variables)
         right = exec_cmd(command[:right], variables)
         return left + right
-      elsif command[:type] == :minus_apply
+      elsif command[:type] == :subtract
         left = exec_cmd(command[:left], variables)
         right = exec_cmd(command[:right], variables)
         return left - right
-      elsif command[:type] == :mult_apply
+      elsif command[:type] == :multiply
         left = exec_cmd(command[:left], variables)
         right = exec_cmd(command[:right], variables)
         return left * right
@@ -140,7 +140,7 @@ module SimpleLanguage
           raise InvalidParameter, "You must pass arguments to a system command" if chains.length == 0 || chains.first[:type] != :function_params
           params = chains.first[:params]
           params = params.map{|p|exec_cmd(p, variables)}
-          ref = run_system_command(name, params)
+          ref = run_system_command(name, params, variables)
           chains.shift
         elsif is_external_command? name
           raise InvalidParameter, "You must pass arguments to an external command" if chains.length == 0 || chains.first[:type] != :function_params
@@ -158,8 +158,24 @@ module SimpleLanguage
           if chain[:type] == :index_of
             index = exec_cmd(chain[:index], variables)
             ref = ref[index]
+          elsif chain[:type] == :function_params
+            if ref[:type] == :function
+              locals = variables.dup
+              chain[:params].each_with_index do |param, i|
+                locals[ref[:params][i]] = exec_cmd(param, locals)
+              end
+              output = nil
+              begin
+                output = run_block(ref[:block], locals)
+              rescue Return => ret
+                output = ret.value
+              end
+              ref = output
+            else
+              binding.pry #todo?
+            end
           else
-            binding.pry
+            binding.pry #todo?
           end
           chains.shift
         end
@@ -280,7 +296,7 @@ module SimpleLanguage
       return system_cmds.include? fun
     end
 
-    def run_system_command(fun, args)
+    def run_system_command(fun, args, variables)
       case fun
       when "print"
         puts(*args)
@@ -295,27 +311,19 @@ module SimpleLanguage
       when "now"
         return Time.new
       when "map"
-        collection = exec_cmd(args[0], variables)
-        fun = nil
-        fun_name = exec_cmd(args[1], variables)
-        if fun_name.class == String
-          raise NullPointer, "#{fun_name} does not exist" if !variables.has_key? fun_name
-          fun = variables[fun_name]
-        else
-          fun = exec_cmd(fun_name, variables)
-        end
+        collection = args[0]
+        fun = args[1]
         locals = variables.dup
-        output = nil
-        locals = fun[:locals].merge(locals)
         arr = []
         collection.each do |item|
-          locals[fun[:params][0][:value]] = item
+          locals[fun[:params][0]] = item
+          output = nil
           begin
             output = run_block(fun[:block], locals)
           rescue Return => ret
             output = ret.value
           end
-          arr.push output
+          arr.push(output)
         end
         return arr
       when "filter"
