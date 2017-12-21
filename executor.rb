@@ -105,6 +105,16 @@ module SimpleLanguage
         return left * right
       elsif command[:type] == :int
         return command[:value].to_i
+      elsif command[:type] == :regex
+        value = command[:value]
+        match = /^\/(.*)\/(.*)$/.match(value)
+        reg_str = match[1]
+        opt_str = match[2]
+        opts = 0
+        opts = opts | Regexp::IGNORECASE if opt_str.include? "i"
+        opts = opts | Regexp::MULTILINE if opt_str.include? "m"
+        regex = Regexp.new(reg_str, opts)
+        return regex
       elsif command[:type] == :reference #:get_value
         name = command[:value]
         ref = nil

@@ -325,9 +325,9 @@ module SimpleLanguage
   def self.make_regex(tokens)
     rest = tokens.dup
     if rest[0] && rest[0][:type] == :regex
-      reg = rest[0][:value]
+      value = rest[0][:value]
       rest.shift # regex
-      return {type: :regex, value: reg}, rest
+      return {type: :regex, value: value}, rest
     else
       return nil, tokens
     end

@@ -45,4 +45,4 @@ func(hsh[arr[arr[7]+3*hsh[func(3)]]])
 
 map([2,4,6,8,10], fib)*/
 
-/hello/im "world"
+/hello/im.match("hello")
