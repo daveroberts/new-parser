@@ -283,9 +283,7 @@ module SimpleLanguage
     return str, rest if str
     hash, rest = make_hash_literal(rest)
     return hash, rest if hash
-    binding.pry
     arr, rest = make_array_literal(rest)
-    binding.pry
     return arr, rest if arr
     sym, rest = make_symbol(rest)
     return sym, rest if sym

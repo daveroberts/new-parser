@@ -31,8 +31,6 @@ func(hsh[arr[arr[7]+3*hsh[func(3)]]])
 
 //print("Hello")[0].child("World")[2] = 4
 
-//square = (x)->{x*x}
-//map([1,2,3,4], square)
-x
-[1]
-x[1]
+// map([1,2,3,4], (x)->{x*x})
+world(22)
+

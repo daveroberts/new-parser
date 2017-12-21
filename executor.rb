@@ -103,32 +103,8 @@ module SimpleLanguage
         right = exec_cmd(command[:right], variables)
         return left * right
       elsif command[:type] == :call
-        fun_name = command[:fun]
-        if is_system_command? fun_name
-          return run_system_command(fun_name, command[:arguments], variables)
-        elsif is_external_command? fun_name
-          return run_external_command(fun_name, command[:arguments], variables)
-        else
-          fun = nil
-          if fun_name.class == String
-            raise NullPointer, "#{fun_name} does not exist" if !variables.has_key? fun_name
-            fun = variables[fun_name]
-          else
-            fun = exec_cmd(fun_name, variables)
-          end
-          locals = variables.dup
-          command[:arguments].each_with_index do |arg, i|
-            locals[fun[:params][i][:value]] = exec_cmd(arg, locals)
-          end
-          output = nil
-          locals = fun[:locals].merge(locals)
-          begin
-            output = run_block(fun[:block], locals)
-          rescue Return => ret
-            output = ret.value
-          end
-          return output
-        end
+        # Not used anymore?
+        binding.pry
       elsif command[:type] == :int
         return command[:value].to_i
       elsif command[:type] == :reference #:get_value
@@ -146,8 +122,7 @@ module SimpleLanguage
           raise InvalidParameter, "You must pass arguments to an external command" if chains.length == 0 || chains.first[:type] != :function_params
           params = chains.first[:params]
           params = params.map{|p|exec_cmd(p, variables)}
-          bindingpry
-          ref = run_external_command(name, command[:params], variables)
+          ref = run_external_command(name, params)
           chains.shift
         else
           raise NullPointer, "#{command[:value]} does not exist" if !variables.has_key? command[:value]
@@ -390,12 +365,8 @@ module SimpleLanguage
       return @external_commands.has_key? fun
     end
 
-    def run_external_command(fun, args, variables)
-      arr = []
-      args.each do |arg|
-        arr.push(exec_cmd(arg, variables))
-      end
-      return @external_commands[fun][:instance].send(@external_commands[fun][:function], *arr)
+    def run_external_command(fun, args)
+      return @external_commands[fun][:instance].send(@external_commands[fun][:function], *args)
     end
   end
 end
