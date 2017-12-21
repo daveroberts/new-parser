@@ -66,20 +66,37 @@ module SimpleLanguage
   def self.make_if(tokens)
     rest = tokens.dup
     return nil, tokens if !rest[0] || rest[0][:type] != :identifier || rest[0][:value] != 'if'
-    rest.shift # if
-    condition, rest = make_expression(rest)
-    raise Exception, "if requires condition" if !condition
-    raise Exception, "if requires block" if !rest[0] || rest[0][:type] != :left_curly
-    rest.shift # left curly
-    true_block = []
-    while rest[0] && rest[0][:type] != :right_curly
-      statement, rest = make_statement(rest)
-      raise Exception, "Invalid statement in if true block" if !statement
-      true_block.push(statement)
+    true_conditions = []
+    while rest[0] && rest[0][:type] == :identifier && rest[0][:value] == 'elsif' || rest[0][:value] == 'if'
+      rest.shift # if/elsif
+      condition, rest = make_expression(rest)
+      raise Exception, "if/elsif requires condition" if !condition
+      raise Exception, "if requires block" if !rest[0] || rest[0][:type] != :left_curly
+      rest.shift # left curly
+      true_block = []
+      while rest[0] && rest[0][:type] != :right_curly
+        statement, rest = make_statement(rest)
+        raise Exception, "Invalid statement in if true block" if !statement
+        true_block.push(statement)
+      end
+      raise Exception, "Block must end with `}`" if !rest[0] || rest[0][:type] != :right_curly
+      true_conditions.push({condition: condition, block: true_block})
+      rest.shift # Right curly
     end
-    raise Exception, "Block must end with `}`" if !rest[0] || rest[0][:type] != :right_curly
-    rest.shift # Right curly
-    return {type: :if, true_conditions: [{ condition: condition, block: true_block}], false_block: []}, rest
+    false_block = []
+    if rest[0] && rest[0][:type] == :identifier && rest[0][:value] == 'else'
+      rest.shift # else
+      raise Exception, "else requires block" if !rest[0] || rest[0][:type] != :left_curly
+      rest.shift # left curly
+      while rest[0] && rest[0][:type] != :right_curly
+        statement, rest = make_statement(rest)
+        raise Exception, "Invalid statement in else block" if !statement
+        false_block.push(statement)
+      end
+      raise Exception, "Block must end with `}`" if !rest[0] || rest[0][:type] != :right_curly
+      rest.shift # Right curly
+    end
+    return {type: :if, true_conditions: true_conditions, false_block: false_block}, rest
   end
 
   def self.make_function_literal(tokens)

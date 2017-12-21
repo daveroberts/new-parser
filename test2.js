@@ -32,5 +32,15 @@ func(hsh[arr[arr[7]+3*hsh[func(3)]]])
 //print("Hello")[0].child("World")[2] = 4
 
 // map([1,2,3,4], (x)->{x*x})
-world(22)
 
+fib = (n)->{
+  if n == 0 {
+    0
+  } elsif n == 1 {
+    1
+  } else {
+    fib(n-1) + fib(n-2)
+  }
+}
+
+fib(15)

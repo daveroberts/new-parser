@@ -2,7 +2,7 @@ require 'pry'
 require 'json'
 require 'securerandom'
 require 'digest'
-require_relative './tokenizer.rb'
+require_relative './lexer.rb'
 require_relative './parser.rb'
 
 module SimpleLanguage
@@ -102,9 +102,6 @@ module SimpleLanguage
         left = exec_cmd(command[:left], variables)
         right = exec_cmd(command[:right], variables)
         return left * right
-      elsif command[:type] == :call
-        # Not used anymore?
-        binding.pry
       elsif command[:type] == :int
         return command[:value].to_i
       elsif command[:type] == :reference #:get_value
