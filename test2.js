@@ -33,9 +33,9 @@ func(hsh[arr[arr[7]+3*hsh[func(3)]]])
 
 // map([1,2,3,4], (x)->{x*x})
 
-fib = (n)->{
+/*fib = (n)->{
   if n == 0 {
-    0
+    1
   } elsif n == 1 {
     1
   } else {
@@ -43,4 +43,6 @@ fib = (n)->{
   }
 }
 
-fib(15)
+map([2,4,6,8,10], fib)*/
+
+/hello/im "world"

@@ -37,6 +37,7 @@ module SimpleLanguage
       @input = input
       tokens = SimpleLanguage::lex(script)
       ast = SimpleLanguage::parse(tokens)
+      binding.pry
       begin
         run_block(ast, {})
       rescue Return => ret
@@ -146,6 +147,9 @@ module SimpleLanguage
             else
               binding.pry #todo?
             end
+          elsif chain[:type] == :member
+            member = chain[:member]
+            ref = ref.send(member)
           else
             binding.pry #todo?
           end
@@ -249,6 +253,10 @@ module SimpleLanguage
         left = exec_cmd(command[:left], variables)
         right = exec_cmd(command[:right], variables)
         return left != right
+      elsif command[:type] == :or
+        left = exec_cmd(command[:left], variables)
+        right = exec_cmd(command[:right], variables)
+        return left || right
       elsif command[:type] == :symbol
         return command[:value]
       elsif command[:type] == :hashmap
@@ -264,7 +272,7 @@ module SimpleLanguage
     end
 
     def is_system_command?(fun)
-      system_cmds = ['print','join','push','map','filter','match','len','hash','random', 'uuid', 'input',"int", "now"]
+      system_cmds = ['print','join','push','map','filter','match','len','md5','sha512','random', 'uuid', 'input',"int", "now"]
       return system_cmds.include? fun
     end
 
@@ -275,9 +283,11 @@ module SimpleLanguage
       when "join"
         return args[0].join(args[1])
       when "len"
-        return exec_cmd(args[0], variables).length
-      when "hash"
-        return Digest::SHA512.hexdigest(exec_cmd(args[0], variables))
+        return args[0].length
+      when "md5"
+        return Digest::MD5.hexdigest(args[0])
+      when "sha512"
+        return Digest::SHA512.hexdigest(args[0])
       when "uuid"
         return SecureRandom.uuid
       when "now"
@@ -299,21 +309,13 @@ module SimpleLanguage
         end
         return arr
       when "filter"
-        collection = exec_cmd(args[0], variables)
-        fun = nil
-        fun_name = exec_cmd(args[1], variables)
-        if fun_name.class == String
-          raise NullPointer, "#{fun_name} does not exist" if !variables.has_key? fun_name
-          fun = variables[fun_name]
-        else
-          fun = exec_cmd(fun_name, variables)
-        end
+        collection = args[0]
+        fun = args[1]
         locals = variables.dup
-        output = nil
-        locals = fun[:locals].merge(locals)
         arr = []
         collection.each do |item|
-          locals[fun[:params][0][:value]] = item
+          locals[fun[:params][0]] = item
+          output = nil
           begin
             output = run_block(fun[:block], locals)
           rescue Return => ret

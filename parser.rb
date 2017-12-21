@@ -296,6 +296,8 @@ module SimpleLanguage
     end
     num, rest = make_number(rest)
     return num, rest if num
+    reg, rest = make_regex(rest)
+    return reg, rest if reg
     str, rest = make_string(rest)
     return str, rest if str
     hash, rest = make_hash_literal(rest)
@@ -315,6 +317,17 @@ module SimpleLanguage
       number = rest[0][:value]
       rest.shift # number
       return {type: :int, value: number}, rest
+    else
+      return nil, tokens
+    end
+  end
+
+  def self.make_regex(tokens)
+    rest = tokens.dup
+    if rest[0] && rest[0][:type] == :regex
+      reg = rest[0][:value]
+      rest.shift # regex
+      return {type: :regex, value: reg}, rest
     else
       return nil, tokens
     end

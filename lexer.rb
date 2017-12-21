@@ -6,6 +6,7 @@ module SimpleLanguage
     { name: :double_quoted_string, regex: /\A"((?:[^"\\]|\\.)*)"/ },
     { name: :single_quoted_string, regex: /\A'((?:[^'\\]|\\.)*)'/ },
     { name: :backtick_string, regex: /\A`((?:[^`\\]|\\.)*)`/ },
+    { name: :regex, regex: /\A\/(?:[^\/\\]|\\.)*\/[i|m]*/ },
     { name: :whitespace, regex: /\A\s+/ },
     { name: :symbol, regex: /\A:([a-z][a-z0-9_]+)/ },
     { name: :symbol, regex: /\A([a-z][a-z0-9_]+):/ },
